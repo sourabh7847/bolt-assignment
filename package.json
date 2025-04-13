@@ -1,4 +1,5 @@
 {
+  "homepage": "https://sourabh7847.github.io/bolt-assignment/",
   "name": "bolt",
   "description": "StackBlitz AI Agent",
   "private": true,
@@ -7,7 +8,6 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "deploy": "npm run build && wrangler pages deploy",
     "build": "remix vite:build",
     "dev": "remix vite:dev",
     "test": "vitest --run",
@@ -15,6 +15,8 @@
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "lint:fix": "npm run lint -- --fix",
     "start": "bindings=$(./bindings.sh) && wrangler pages dev ./build/client $bindings",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "typecheck": "tsc",
     "typegen": "wrangler types",
     "preview": "pnpm run build && pnpm run start"
@@ -87,6 +89,7 @@
     "@types/react": "^18.2.20",
     "@types/react-dom": "^18.2.7",
     "fast-glob": "^3.3.2",
+    "gh-pages": "^6.3.0",
     "is-ci": "^3.0.1",
     "node-fetch": "^3.3.2",
     "prettier": "^3.3.2",
