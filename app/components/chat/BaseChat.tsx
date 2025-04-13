@@ -9,8 +9,8 @@ import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
 
 import styles from './BaseChat.module.scss';
-import borderStyles from './MovingBorder.module.scss';
 import meteorStyles from './Meteors.module.scss';
+import borderStyles from './MovingBorder.module.scss';
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
