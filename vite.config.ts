@@ -5,6 +5,8 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
+import { netlifyPlugin } from '@netlify/remix-adapter/plugin';
+
 export default defineConfig((config) => {
   return {
     build: {
@@ -26,6 +28,7 @@ export default defineConfig((config) => {
       tsconfigPaths(),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
+      netlifyPlugin(),
     ],
   };
 });
