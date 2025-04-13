@@ -1,0 +1,95 @@
+.movingBorderContainer {
+  position: relative;
+  border-radius: 0.75rem;
+  background: transparent;
+  overflow: hidden; /* This will contain the reflection */
+}
+
+/* Border element */
+.borderElement {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  border: 3px solid transparent;
+  /* Multiple background layers to create gradient border only */
+  background:
+    linear-gradient(#000, #000) padding-box,
+    /* This creates the "hole" in the middle */
+      linear-gradient(90deg, #9333ea 0%, #ec4899 25%, #3b82f6 50%, #9333ea 75%, #ec4899 100%) border-box; /* This creates the gradient border */
+  background-size: 200% 100%;
+  animation: moveGradient 5s linear infinite;
+  pointer-events: none; /* Make sure it doesn't interfere with clicks */
+}
+
+/* Glow effect */
+.glowElement {
+  position: absolute;
+  inset: -1px;
+  border-radius: 0.75rem;
+  border: 3px solid transparent;
+  background:
+    transparent padding-box,
+    linear-gradient(90deg, #9333ea 0%, #ec4899 25%, #3b82f6 50%, #9333ea 75%, #ec4899 100%) border-box;
+  background-size: 200% 100%;
+  animation: moveGradient 5s linear infinite;
+  pointer-events: none;
+}
+
+/* Enhanced glassmorphism inner content */
+.innerContent {
+  position: relative;
+  border-radius: 0.75rem;
+  z-index: 10;
+
+  /* Glassmorphism effect */
+  background: rgba(17, 17, 40, 0.6); /* Semi-transparent dark background */
+  backdrop-filter: blur(10px);
+
+  /* Subtle inner glass highlight */
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    /* Top highlight */ inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    /* Bottom shadow */ 0 4px 20px rgba(0, 0, 0, 0.1); /* Outer glow */
+
+  /* Inner glass texture */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+    background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+/* Container-wide reflection effect */
+.reflection {
+  position: absolute;
+  top: 0;
+  left: -30%;
+  width: 30%; /* Narrower width for a more subtle effect */
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  z-index: 11; /* Above innerContent but below form elements */
+  pointer-events: none;
+  animation: reflectionMove 5s infinite;
+}
+
+@keyframes reflectionMove {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes moveGradient {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}

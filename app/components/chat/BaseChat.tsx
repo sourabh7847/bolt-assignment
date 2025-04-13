@@ -9,6 +9,8 @@ import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
 
 import styles from './BaseChat.module.scss';
+import borderStyles from './MovingBorder.module.scss';
+import meteorStyles from './Meteors.module.scss';
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -37,6 +39,9 @@ const EXAMPLE_PROMPTS = [
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
+// Reduced number of shooting stars to prevent clutter
+const SHOOTING_STARS_COUNT = 16;
+
 export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
   (
     {
@@ -59,6 +64,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
   ) => {
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
 
+    // Generate array for shooting stars
+    const shootingStars = Array.from({ length: SHOOTING_STARS_COUNT }, (_, i) => i);
+
     return (
       <div
         ref={ref}
@@ -69,7 +77,21 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         data-chat-visible={showChat}
       >
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div ref={scrollRef} className="flex overflow-y-auto w-full h-full">
+
+        {/* Main scrollable container with background meteors */}
+        <div
+          ref={scrollRef}
+          className={classNames('flex overflow-y-auto w-full h-full relative', meteorStyles.meteorContainer)}
+        >
+          {/* Absolutely positioned night container with shooting stars */}
+          <div className={meteorStyles.night}>
+            {/* Well-spaced, blurry shooting stars */}
+            {shootingStars.map((i) => (
+              <div key={`star-${i}`} className={meteorStyles.shooting_star} />
+            ))}
+          </div>
+
+          {/* Content stays centered with normal layout flow */}
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
               <div id="intro" className="mt-[26vh] max-w-chat mx-auto">
@@ -99,40 +121,50 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 }}
               </ClientOnly>
               <div
-                className={classNames('relative w-full max-w-chat mx-auto z-prompt', {
-                  'sticky bottom-0': chatStarted,
-                })}
+                className={classNames(
+                  borderStyles.movingBorderContainer,
+                  'relative w-full max-w-chat mx-auto z-prompt',
+                  {
+                    'sticky bottom-0': chatStarted,
+                  },
+                )}
               >
-                <div
-                  className={classNames(
-                    'shadow-sm border border-bolt-elements-borderColor bg-bolt-elements-prompt-background backdrop-filter backdrop-blur-[8px] rounded-lg overflow-hidden',
-                  )}
-                >
-                  <textarea
-                    ref={textareaRef}
-                    className={`w-full pl-4 pt-4 pr-16 focus:outline-none resize-none text-md text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent`}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        if (event.shiftKey) {
-                          return;
+                <div className={borderStyles.reflection}></div>
+                {/* Animated border elements */}
+                <div className={borderStyles.glowElement}></div>
+                <div className={borderStyles.borderElement}></div>
+
+                {/* Enhanced glassmorphism inner content */}
+                <div className={borderStyles.innerContent}>
+                  {/* Textarea container with contained reflection */}
+                  <div className={borderStyles.textareaContainer}>
+                    <textarea
+                      ref={textareaRef}
+                      className={`w-full pl-4 pt-4 pr-16 focus:outline-none resize-none text-md text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent relative z-20`}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          if (event.shiftKey) {
+                            return;
+                          }
+
+                          event.preventDefault();
+
+                          sendMessage?.(event);
                         }
+                      }}
+                      value={input}
+                      onChange={(event) => {
+                        handleInputChange?.(event);
+                      }}
+                      style={{
+                        minHeight: TEXTAREA_MIN_HEIGHT,
+                        maxHeight: TEXTAREA_MAX_HEIGHT,
+                      }}
+                      placeholder="How can Bolt help you today?"
+                      translate="no"
+                    />
+                  </div>
 
-                        event.preventDefault();
-
-                        sendMessage?.(event);
-                      }
-                    }}
-                    value={input}
-                    onChange={(event) => {
-                      handleInputChange?.(event);
-                    }}
-                    style={{
-                      minHeight: TEXTAREA_MIN_HEIGHT,
-                      maxHeight: TEXTAREA_MAX_HEIGHT,
-                    }}
-                    placeholder="How can Bolt help you today?"
-                    translate="no"
-                  />
                   <ClientOnly>
                     {() => (
                       <SendButton
@@ -149,7 +181,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       />
                     )}
                   </ClientOnly>
-                  <div className="flex justify-between text-sm p-4 pt-2">
+                  <div className="flex justify-between text-sm p-4 pt-2 relative z-20">
                     <div className="flex gap-1 items-center">
                       <IconButton
                         title="Enhance prompt"
@@ -181,27 +213,29 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     ) : null}
                   </div>
                 </div>
-                <div className="bg-bolt-elements-background-depth-1 pb-6">{/* Ghost Element */}</div>
               </div>
             </div>
             {!chatStarted && (
-              <div id="examples" className="relative w-full max-w-xl mx-auto mt-8 flex justify-center">
-                <div className="flex flex-col space-y-2 [mask-image:linear-gradient(to_bottom,black_0%,transparent_180%)] hover:[mask-image:none]">
-                  {EXAMPLE_PROMPTS.map((examplePrompt, index) => {
-                    return (
+              <div id="examples" className="relative w-full max-w-xl mx-auto mt-8 flex justify-center flex-wrap">
+                {EXAMPLE_PROMPTS.map((examplePrompt, index) => {
+                  return (
+                    <div key={index} className="flex flex-row ml-4 mb-2 space-y-2">
                       <button
-                        key={index}
                         onClick={(event) => {
                           sendMessage?.(event, examplePrompt.text);
                         }}
-                        className="group flex items-center w-full gap-2 justify-center bg-transparent text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary transition-theme"
+                        className={classNames(
+                          styles.exampleGlassButton,
+                          'group flex items-center w-full justify-center bg-transparent text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary',
+                        )}
                       >
                         {examplePrompt.text}
-                        <div className="i-ph:arrow-bend-down-left" />
+                        {/* Glossy reflection effect */}
+                        <div className={styles.glassReflection}></div>
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

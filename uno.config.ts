@@ -98,20 +98,67 @@ const COLOR_PRIMITIVES = {
 };
 
 export default defineConfig({
+  safelist: [
+    'moving-border',
+    'moving-border-vars',
+    'bg-moving-gradient',
+    'gradient-speed-3s',
+    'gradient-speed-5s',
+    'gradient-speed-8s',
+  ],
   shortcuts: {
     'bolt-ease-cubic-bezier': 'ease-[cubic-bezier(0.4,0,0.2,1)]',
     'transition-theme': 'transition-[background-color,border-color,color] duration-150 bolt-ease-cubic-bezier',
     kdb: 'bg-bolt-elements-code-background text-bolt-elements-code-text py-1 px-1.5 rounded-md',
     'max-w-chat': 'max-w-[var(--chat-max-width)]',
+
+    // Dynamic highlight effect that follows cursor
+    'moving-border-spotlight': [
+      'before:[background-image:radial-gradient(650px_circle_at_var(--x)_var(--y),rgba(255,255,255,0.4),transparent_40%),linear-gradient(to_left,#9333ea,#ec4899,#3b82f6)]',
+      'after:[background-image:radial-gradient(650px_circle_at_var(--x)_var(--y),rgba(255,255,255,0.15),transparent_40%),linear-gradient(to_left,#9333ea,#ec4899,#3b82f6)]',
+    ],
+    'moving-border': [
+      'relative overflow-hidden',
+      'before:absolute before:inset-0 before:rounded-[var(--border-radius)] before:content-[""] before:p-[2px] before:bg-[length:200%_auto] before:animate-gradient-x',
+      'after:absolute after:inset-0 after:rounded-[var(--border-radius)] after:content-[""] after:p-[2px] after:bg-[length:200%_auto] after:animate-gradient-x after:blur-sm',
+    ],
+    // Default CSS variables
+    'moving-border-vars': '[--border-radius:0.75rem] [--gradient-speed:3s]',
   },
   rules: [
     /**
      * This shorthand doesn't exist in Tailwind and we overwrite it to avoid
      * any conflicts with minified CSS classes.
      */
+    // Custom rules for animation speed and border radius
+    [/^border-radius-(\d+)$/, ([, d]) => ({ '--border-radius': `${d}px` })],
+    [/^gradient-speed-(\d+)s$/, ([, d]) => ({ '--gradient-speed': `${d}s` })],
+
+    // Gradient background
+    [
+      'bg-moving-gradient',
+      {
+        'background-image': 'linear-gradient(90deg, #9333ea, #ec4899, #3b82f6, #9333ea)',
+      },
+    ],
     ['b', {}],
   ],
   theme: {
+    animation: {
+      'border-move': 'borderMove 5s linear infinite',
+      'gradient-x': 'gradient-x var(--gradient-speed) linear infinite',
+    },
+    keyframes: {
+      'gradient-x': {
+        '0%': { 'background-position': '0% 0%' },
+        '100%': { 'background-position': '200% 0%' },
+      },
+      borderMove: `
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      `,
+    },
     colors: {
       ...COLOR_PRIMITIVES,
       bolt: {
@@ -228,6 +275,7 @@ export default defineConfig({
       },
     },
   },
+
   transformers: [transformerDirectives()],
   presets: [
     presetUno({
@@ -238,6 +286,7 @@ export default defineConfig({
     }),
     presetIcons({
       warn: true,
+      scale: 1.2,
       collections: {
         ...customIconCollection,
       },
