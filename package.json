@@ -9,6 +9,7 @@
   "type": "module",
   "scripts": {
     "build": "remix vite:build",
+    "preview": "pnpm run build && wrangler pages dev ./build/client",
     "dev": "remix vite:dev",
     "test": "vitest --run",
     "test:watch": "vitest",
@@ -18,8 +19,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "typecheck": "tsc",
-    "typegen": "wrangler types",
-    "preview": "pnpm run build && pnpm run start"
+    "typegen": "wrangler types"
   },
   "engines": {
     "node": ">=18.18.0"
