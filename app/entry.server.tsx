@@ -1,70 +1,68 @@
 import type { AppLoadContext, EntryContext } from '@remix-run/cloudflare';
 import { RemixServer } from '@remix-run/react';
-import { renderToPipeableStream } from 'react-dom/server';
+import { renderToReadableStream } from 'react-dom/server';
 import { isbot } from 'isbot';
 import { renderHeadToString } from 'remix-island';
 import { Head } from './root';
 import { themeStore } from '~/lib/stores/theme';
 
-export default function handleRequest(
+export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
   _loadContext: AppLoadContext,
 ) {
-  const callbackName = isbot(request.headers.get('user-agent') || '') ? 'onAllReady' : 'onShellReady';
+  const isBot = isbot(request.headers.get('user-agent') || '');
 
-  return new Promise<Response>((resolve, reject) => {
-    let didError = false;
+  try {
+    const head = renderHeadToString({ request, remixContext, Head });
+    const stream = await renderToReadableStream(<RemixServer context={remixContext} url={request.url} />, {
+      bootstrapScripts: ['/build/entry.client.js'],
+      // This ensures the stream waits for all the content on bots
+      // and just shell for humans (better perf)
+      [isBot ? 'onAllReady' : 'onShellReady']: () => {},
+    });
 
-    const { pipe } = renderToPipeableStream(<RemixServer context={remixContext} url={request.url} />, {
-      [callbackName]: () => {
-        const { readable, writable } = new TransformStream();
-        const writer = writable.getWriter();
+    await stream.allReady;
 
-        const encoder = new TextEncoder();
-        const head = renderHeadToString({ request, remixContext, Head });
+    const encoder = new TextEncoder();
 
-        writer.write(
-          encoder.encode(
-            `<!DOCTYPE html><html lang="en" data-theme="${themeStore.value}"><head>${head}</head><body><div id="root" class="w-full h-full">`,
-          ),
-        );
+    const headChunk = encoder.encode(
+      `<!DOCTYPE html><html lang="en" data-theme="${themeStore.value}"><head>${head}</head><body><div id="root" class="w-full h-full">`,
+    );
 
-        const stream = new WritableStream({
-          write(chunk) {
-            writer.write(chunk);
-          },
-          close() {
-            writer.write(encoder.encode(`</div></body></html>`));
-            writer.close();
-          },
-          abort(reason) {
-            writer.abort(reason);
-          },
-        });
+    const tailChunk = encoder.encode(`</div></body></html>`);
 
-        pipe(stream as any); // We know this is safe
+    const fullStream = new ReadableStream({
+      async start(controller) {
+        controller.enqueue(headChunk);
 
-        responseHeaders.set('Content-Type', 'text/html');
-        responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-        responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+        const reader = stream.getReader();
 
-        resolve(
-          new Response(readable, {
-            status: didError ? 500 : responseStatusCode,
-            headers: responseHeaders,
-          }),
-        );
-      },
-      onShellError(err) {
-        reject(err);
-      },
-      onError(err) {
-        didError = true;
-        console.error(err);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          controller.enqueue(value);
+        }
+
+        controller.enqueue(tailChunk);
+        controller.close();
       },
     });
-  });
+
+    responseHeaders.set('Content-Type', 'text/html');
+    responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+
+    return new Response(fullStream, {
+      status: responseStatusCode,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    console.error(error);
+    return new Response('Internal Server Error', {
+      status: 500,
+    });
+  }
 }
