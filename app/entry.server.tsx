@@ -1,10 +1,13 @@
 import type { AppLoadContext, EntryContext } from '@remix-run/cloudflare';
 import { RemixServer } from '@remix-run/react';
-import { renderToReadableStream } from 'react-dom/server';
 import { isbot } from 'isbot';
 import { renderHeadToString } from 'remix-island';
 import { Head } from './root';
 import { themeStore } from '~/lib/stores/theme';
+
+import * as ReactDOMServer from 'react-dom/server';
+
+const { renderToReadableStream } = ReactDOMServer;
 
 export default async function handleRequest(
   request: Request,
