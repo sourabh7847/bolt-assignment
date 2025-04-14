@@ -2,19 +2,5 @@ name = "bolt"
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2024-07-01"
 
-# Cloudflare Pages build settings
-pages_build_output_dir = "./build/client"  # This is the directory where Remix outputs the static assets
-[build]
-command = "npm run build"  # Change to `pnpm run build` if using pnpm
-dir = "build"               # The output directory for Remix build (it should match where Remix places the built assets)
-
-[build.upload]
-format = "service-worker"  # Necessary for Cloudflare Pages deployment to function correctly
-
-# Environment-specific settings for production
-[env.production]
-name = "production"
-
-[env]
-NODE_ENV = "production"
-PACKAGE_MANAGER = "pnpm"
+# Cloudflare Pages build output directory
+pages_build_output_dir = "./build/client"
