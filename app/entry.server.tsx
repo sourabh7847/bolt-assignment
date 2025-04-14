@@ -1,78 +1,70 @@
 import type { AppLoadContext, EntryContext } from '@remix-run/cloudflare';
 import { RemixServer } from '@remix-run/react';
+import { renderToPipeableStream } from 'react-dom/server';
 import { isbot } from 'isbot';
-import { renderToReadableStream } from 'react-dom/server';
 import { renderHeadToString } from 'remix-island';
 import { Head } from './root';
 import { themeStore } from '~/lib/stores/theme';
 
-export default async function handleRequest(
+export default function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
   _loadContext: AppLoadContext,
 ) {
-  const readable = await renderToReadableStream(<RemixServer context={remixContext} url={request.url} />, {
-    signal: request.signal,
-    onError(error: unknown) {
-      console.error(error);
-      responseStatusCode = 500;
-    },
-  });
+  const callbackName = isbot(request.headers.get('user-agent') || '') ? 'onAllReady' : 'onShellReady';
 
-  const body = new ReadableStream({
-    start(controller) {
-      const head = renderHeadToString({ request, remixContext, Head });
+  return new Promise<Response>((resolve, reject) => {
+    let didError = false;
 
-      controller.enqueue(
-        new Uint8Array(
-          new TextEncoder().encode(
+    const { pipe } = renderToPipeableStream(<RemixServer context={remixContext} url={request.url} />, {
+      [callbackName]: () => {
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+
+        const encoder = new TextEncoder();
+        const head = renderHeadToString({ request, remixContext, Head });
+
+        writer.write(
+          encoder.encode(
             `<!DOCTYPE html><html lang="en" data-theme="${themeStore.value}"><head>${head}</head><body><div id="root" class="w-full h-full">`,
           ),
-        ),
-      );
+        );
 
-      const reader = readable.getReader();
+        const stream = new WritableStream({
+          write(chunk) {
+            writer.write(chunk);
+          },
+          close() {
+            writer.write(encoder.encode(`</div></body></html>`));
+            writer.close();
+          },
+          abort(reason) {
+            writer.abort(reason);
+          },
+        });
 
-      function read() {
-        reader
-          .read()
-          .then(({ done, value }) => {
-            if (done) {
-              controller.enqueue(new Uint8Array(new TextEncoder().encode(`</div></body></html>`)));
-              controller.close();
+        pipe(stream as any); // We know this is safe
 
-              return;
-            }
+        responseHeaders.set('Content-Type', 'text/html');
+        responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+        responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
 
-            controller.enqueue(value);
-            read();
-          })
-          .catch((error) => {
-            controller.error(error);
-            readable.cancel();
-          });
-      }
-      read();
-    },
-
-    cancel() {
-      readable.cancel();
-    },
-  });
-
-  if (isbot(request.headers.get('user-agent') || '')) {
-    await readable.allReady;
-  }
-
-  responseHeaders.set('Content-Type', 'text/html');
-
-  responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-  responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-
-  return new Response(body, {
-    headers: responseHeaders,
-    status: responseStatusCode,
+        resolve(
+          new Response(readable, {
+            status: didError ? 500 : responseStatusCode,
+            headers: responseHeaders,
+          }),
+        );
+      },
+      onShellError(err) {
+        reject(err);
+      },
+      onError(err) {
+        didError = true;
+        console.error(err);
+      },
+    });
   });
 }
